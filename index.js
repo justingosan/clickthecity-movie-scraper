@@ -9,7 +9,6 @@ const assert = require('assert');
 
     Promise.coroutine(function*(){
         try{
-            console.log(yield getCinemasFromLocation('/movies/theaters.php?cid=15'));
             let response = yield rp.get('http://www.clickthecity.com/movies/')
             let $ = cheerio.load(response);
 
@@ -28,38 +27,58 @@ const assert = require('assert');
             console.log(`Grabbed ${totalLocations} locations`);
             assert(totalLocations > 0, 'There should be more than 1 location');
 
+            const promises = [];
             regions.forEach((region)=>{
                 _.each(region, (loc, key)=>{
-                    console.log(loc);
+                    promises.push(getCinemasFromLocation(loc.url));
                 });
-            })
+            });
+            console.log(yield Promise.all(promises));
         }catch(e){
             throw e;
         }
-
     })();
 
 
     function getCinemasFromLocation(url){
-        return new Promise((reslve, reject)=>{
+        return new Promise((resolve, reject)=>{
             Promise.coroutine(function*(){
                 try{
-                    let response = yield rp.get('http://www.clickthecity.com' + url)
-                    let $ = cheerio.load(response);
+                    const $ = yield rp.get({
+                        url: 'http://www.clickthecity.com' + url,
+                        followAllRedirects: true,
+                        headers: {
+                            'user-agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_11_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/52.0.2743.116 Safari/537.36',
+                        },
+                        transform: function (body) {
+                            return cheerio.load(body);
+                        }
+                    });
 
                     const theatre_list = $('section#maincontent').find('ul')[0];
                     assert(theatre_list !== null);
 
-                    console.log(response);
-
-                    $(theatre_list).find('a').each((i, ele)=>{
-                        console.log($(ele).text());
+                    const returnVal = {};
+                    $(theatre_list).find('li').each((i, li)=>{
+                        let href = $(li).children().first().attr('href');
+                        console.log(href);
+                        let urlParts =  href.split('/');
+                        let name;
+                        if(urlParts.length === 2){
+                            name = urlParts[1].replace(/-/g, '_');
+                        }else{
+                            name = urlParts[0].replace(/-/g, '_');
+                        }
+                        returnVal[name] = href;
                     });
+
+                    resolve(returnVal);
                 }catch(e){
                     reject(e);
                 }
             })();
         })
     }
+
 
 })();
