@@ -2,7 +2,12 @@ const rp = require('request-promise');
 const cheerio = require('cheerio');
 const _ = require('lodash');
 const Promise = require('bluebird');
+const firebase = require('firebase');
 const assert = require('assert');
+
+// firebase.initializeApp({apiKey: process.env.FIREBASE_API_KEY, authDomain: process.env.AUTH_DOMAIN, databaseURL: process.env.FIREBASE_URL, storageBucket: process.env.BUCKET});
+//
+// _self.db = firebase.database().ref('challenges');
 
 (()=>{
     'use strict';
@@ -28,12 +33,19 @@ const assert = require('assert');
             assert(totalLocations > 0, 'There should be more than 1 location');
 
             const promises = [];
-            regions.forEach((region)=>{
+            const tracker = [];
+            regions.forEach((region, region_idx)=>{
                 _.each(region, (loc, key)=>{
                     promises.push(getCinemasFromLocation(loc.url));
+                    tracker.push([region_idx, key]);
                 });
             });
-            console.log(yield Promise.all(promises));
+
+            const results = yield Promise.all(promises);
+            results.forEach((result, idx)=>{
+                regions[tracker[idx][0]][tracker[idx][1]].theaters = result;
+            });
+            console.log(JSON.stringify(regions));
         }catch(e){
             throw e;
         }
@@ -61,7 +73,6 @@ const assert = require('assert');
                     const returnVal = {};
                     $(theatre_list).find('li').each((i, li)=>{
                         let href = $(li).children().first().attr('href');
-                        console.log(href);
                         let urlParts =  href.split('/');
                         let name;
                         if(urlParts.length === 2){
