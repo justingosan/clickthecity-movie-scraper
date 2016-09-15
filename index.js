@@ -9,6 +9,11 @@ const assert = require('assert');
 //
 // _self.db = firebase.database().ref('challenges');
 
+firebase.initializeApp({
+  databaseURL: 'https://clickthecity-movie-scraper.firebaseio.com',
+  serviceAccount: './service.account.json'
+});
+
 (()=>{
     'use strict';
 
@@ -46,6 +51,11 @@ const assert = require('assert');
                 regions[tracker[idx][0]][tracker[idx][1]].theaters = result;
             });
             console.log(JSON.stringify(regions));
+
+            yield firebase.database().ref('regions').set({
+                metro_manila: regions[0],
+                outside: regions[1],
+            });
         }catch(e){
             throw e;
         }
@@ -59,6 +69,7 @@ const assert = require('assert');
                     const $ = yield rp.get({
                         url: 'http://www.clickthecity.com' + url,
                         followAllRedirects: true,
+                        timeout: 10000,
                         headers: {
                             'user-agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_11_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/52.0.2743.116 Safari/537.36',
                         },
@@ -83,9 +94,13 @@ const assert = require('assert');
                         returnVal[name] = href;
                     });
 
+                    console.log(url);
+                    console.log(returnVal);
+
                     resolve(returnVal);
                 }catch(e){
-                    reject(e);
+                    console.log('Error retrieving: ' + url);
+                    resolve({});
                 }
             })();
         })
