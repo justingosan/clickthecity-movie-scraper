@@ -22,6 +22,7 @@ firebase.initializeApp({
             let regions = yield firebase.database().ref('regions').once('value');
 
             // _.each(regions.val())
+            console.log(regions.val());
 
         }catch(e){
             throw e;

@@ -7,7 +7,7 @@ const assert = require('assert');
 
 firebase.initializeApp({
   databaseURL: 'https://clickthecity-movie-scraper.firebaseio.com',
-  serviceAccount: './serviceAccount.json'
+  serviceAccount: './service.account.json'
 });
 
 (()=>{
@@ -42,22 +42,38 @@ firebase.initializeApp({
                 const cinemas = {};
                 $(theatersArea).find('ul#cinemas').children().each((i, li)=>{
                     const cinemaName = $(li).find('span.cinema').first().text();
-                    const movieSchedule = $('li').find('ul').first();
+                    const movieSchedule = $(li).find('ul').first();
 
-                    console.log(parseOutSchedule(movieSchedule));
+                    return {
+                        cinemaName,
+                        movieSchedule: parseOutSchedule(movieSchedule)
+                    }
                 });
             })();
         })
     }
 
     function parseOutSchedule(movieSchedule){
-        $ = cheerio.load(movieSchedule);
-
-        if($.children().length){
-
+        let $ = cheerio.load(movieSchedule);
+        if($(movieSchedule).children().length){
+            return parseMovieHtml($(movieSchedule).children().html());
         }else{
             return {};
         }
     }
 
+    function parseMovieHtml(movieHtml){
+        let $ = cheerio.load(movieHtml);
+
+        let mainSpan = $(movieHtml).find('span').first();
+        let title = $(mainSpan).find('a').length;
+
+        let rating = $(mainSpan).find('span').first().text();
+
+
+        let returnObj = {
+            title, rating
+        }
+        console.log(returnObj);
+    }
 })();
