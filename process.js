@@ -15,7 +15,23 @@ firebase.initializeApp({
 
     Promise.coroutine(function*(){
         try{
-            getTheatreSchedule('http://www.clickthecity.com/movies/theaters/sm-megamall');
+            const promises = {};
+            const regions = yield firebase.database().ref('regions').once('value');
+
+            console.log(regions.val());
+            _.each(regions.val(), (val, location)=>{
+                console.log(`Processing regions in ${location}`);
+                _.each(val, (val2, region)=>{
+                    console.log(`----Processing theatres in ${region}`);
+                    _.each(val2.theaters, (url_suffix, theatre)=>{
+                        console.log(`========Processing theatre: ${theatre}`);
+                        promises[theatre] = getTheatreSchedule(`http://www.clickthecity.com/movies/${url_suffix}`);
+                    });
+                });
+            });
+
+            const results = yield Promise.props(promises);
+            console.log(results);
         }catch(e){
             throw e;
         }
@@ -44,10 +60,10 @@ firebase.initializeApp({
                     const cinemaName = $(li).find('span.cinema').first().text();
                     const movieSchedule = $(li).find('ul').first();
 
-                    return {
+                    resolve({
                         cinemaName,
-                        movieSchedule: parseOutSchedule(movieSchedule)
-                    }
+                        schedule: parseOutSchedule(movieSchedule)
+                    });
                 });
             })();
         })
@@ -56,7 +72,7 @@ firebase.initializeApp({
     function parseOutSchedule(movieSchedule){
         let $ = cheerio.load(movieSchedule);
         if($(movieSchedule).children().length){
-            return parseMovieHtml($(movieSchedule).children().html());
+            return parseMovieHtml(movieSchedule);
         }else{
             return {};
         }
@@ -65,15 +81,15 @@ firebase.initializeApp({
     function parseMovieHtml(movieHtml){
         let $ = cheerio.load(movieHtml);
 
-        let mainSpan = $(movieHtml).find('span').first();
-        let title = $(mainSpan).find('a').length;
+        let mainSpan = $(movieHtml).find('span');
 
-        let rating = $(mainSpan).find('span').first().text();
-
+        let title = $(movieHtml).find('a').text();
+        let rating = $(mainSpan).find('span').first().find('span').first().text();
+        let running_time = $(mainSpan).find('.running_time').text();
+        let schedule = $(mainSpan).find('div').text();
 
         let returnObj = {
-            title, rating
+            title, rating, running_time, schedule
         }
-        console.log(returnObj);
     }
 })();
