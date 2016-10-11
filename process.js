@@ -24,14 +24,19 @@ firebase.initializeApp({
                 _.each(val, (val2, region)=>{
                     console.log(`----Processing theatres in ${region}`);
                     _.each(val2.theaters, (url_suffix, theatre)=>{
-                        console.log(`========Processing theatre: ${theatre}`);
-                        promises[theatre] = getTheatreSchedule(`http://www.clickthecity.com/movies/${url_suffix}`);
+                        promises[theatre] = getTheatreSchedule(url_suffix);
                     });
                 });
             });
 
-            const results = yield Promise.props(promises);
-            console.log(results);
+            // const results = yield Promise.props(promises);
+
+            yield Promise.mapSeries(_.values(promises), function (result) {
+                console.log(result);
+                return Promise.delay(3000);
+            }, {concurrency: 2}).then(console.error.bind(console));
+
+            process.exit();
         }catch(e){
             throw e;
         }
@@ -41,8 +46,9 @@ firebase.initializeApp({
         return new Promise((resolve, reject)=>{
             Promise.coroutine(function*(){
                 const response = yield rp({
-                    url: url
+                    url: `http://www.clickthecity.com/movies/${url}`
                 });
+                console.log(`--------Processing theatre: ${url}`);
                 const $ = cheerio.load(response);
 
                 const theatersArea = $('div#theatersArea');
@@ -88,7 +94,7 @@ firebase.initializeApp({
         let running_time = $(mainSpan).find('.running_time').text();
         let schedule = $(mainSpan).find('div').text();
 
-        let returnObj = {
+        return {
             title, rating, running_time, schedule
         }
     }
